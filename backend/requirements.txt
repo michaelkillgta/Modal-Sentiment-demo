@@ -1,0 +1,26 @@
+# Backend dependencies for Modal Sentiment AI.
+#
+# These are the same dependencies that `modal_app.py` installs into the Modal
+# image, listed here so the backend's requirements are readable in one place.
+#
+# Install them locally (optional, only if you want to experiment outside Modal):
+#
+#   python -m venv .venv
+#   source .venv/bin/activate          # Windows: .venv\Scripts\activate
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   pip install -r requirements.txt
+#
+# Why torch is not listed below: PyTorch publishes separate CPU-only and
+# CUDA-enabled builds. On Linux, a plain `pip install torch` pulls multi-gigabyte
+# CUDA wheels. To stay CPU-only we install it from PyTorch's CPU index, which is
+# exactly what `modal_app.py` does:
+#
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu
+#
+# (If you add torch to this file, add that --index-url flag first, or you will
+# download CUDA wheels that this demo will never use.)
+
+transformers>=4.44,<6
+
+# Required by @modal.fastapi_endpoint, which Modal wraps in a FastAPI app.
+fastapi[standard]
