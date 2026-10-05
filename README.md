@@ -143,99 +143,137 @@ modal-sentiment-demo/
 
 ## Setup and run
 
-You need a [Modal account](https://modal.com), Python 3.10+ and Node.js 20.9+.
+## Run the project: step by step
 
-### 1. Deploy the backend
+Follow these steps in order. The backend must be deployed before the web page can analyze
+text. The commands below are written for **Windows PowerShell**. On macOS or Linux, use
+`cd` in the same way and replace `Copy-Item .env.example .env.local` with
+`cp .env.example .env.local`.
 
-```bash
-cd backend
-python -m pip install modal        # installs the Modal client and the CLI
-python -m modal setup              # once: opens your browser to log in
+### Before you begin
+
+Install or create accounts for:
+
+1. [Python 3.10 or newer](https://www.python.org/downloads/). During Windows installation,
+   enable **Add Python to PATH**.
+2. [Node.js 20.9 or newer](https://nodejs.org/). The installer includes `npm`.
+3. A [Modal account](https://modal.com). You will sign in from your browser when setting up
+   the Modal command-line tool.
+4. Git, if you are cloning the project from GitHub. You can also download the project as a
+   ZIP and open its folder in VS Code.
+
+To check that Python and Node.js are available, open a terminal and run:
+
+```powershell
+python --version
+node --version
+npm --version
+```
+
+Each command should print a version number. If a command is not recognized, install that
+tool and open a new terminal.
+
+### 1. Get the project files
+
+If you have not already downloaded the project, run:
+
+```powershell
+git clone https://github.com/michaelkillgta/Modal-Sentiment-demo.git
+Set-Location Modal-Sentiment-demo
+```
+
+If you already opened the project folder in VS Code, skip this step. In the terminal, move
+to that folder before continuing.
+
+### 2. Deploy the Python backend to Modal
+
+In the project folder, run these commands one at a time:
+
+```powershell
+Set-Location backend
+python -m pip install modal
+python -m modal setup
+```
+
+The setup command opens a browser so you can sign in to Modal and authorize the CLI. You
+only need to do this once on your computer. When setup finishes, deploy the backend:
+
+```powershell
 python -m modal deploy modal_app.py
 ```
 
-Why `python -m modal` instead of plain `modal`? It runs the installed package
-through your current Python, so it works no matter which folder the CLI ended up in.
-If `modal` happens to be on your PATH, the shorter `modal setup` and
-`modal deploy modal_app.py` are exactly equivalent — the rest of this README uses that
-short form. On Windows this distinction matters: `pip install modal` usually puts
-`modal.exe` in a Python `Scripts` folder that is **not** on PATH, which is the usual
-cause of `The term 'modal' is not recognized as the name of a cmdlet`.
+The first deployment can take several minutes while Modal builds the environment. When it
+finishes, the terminal prints a URL ending in **`.modal.run`**. Copy that full URL; you will
+use it in the next step. Do not use a `modal.com/apps/...` dashboard URL.
 
-If the install refuses to write to your Python folder, add `--user`
-(`python -m pip install --user modal`) and keep using `python -m modal ...`.
+If you need to find the function URL later, run this from the `backend` folder:
 
-`modal deploy` builds the image (a few minutes the first time, seconds after that, because
-Modal caches image layers) and prints the URL of your web function:
-
-```
-✓ Created web function predict => https://<your-workspace>--modal-sentiment-demo-sentimentmodel-predict.modal.run
-```
-
-Copy that URL. The slug is derived from the app, class and method names, which is why it
-contains both `modal-sentiment-demo` and `sentimentmodel`. Lost it? Look it up any time:
-
-```bash
+```powershell
 python -m modal app info modal-sentiment-demo
 ```
 
-Watch out for the most common mix-up: you want the `…modal.run` **function** URL, not the
-`https://modal.com/apps/…` **dashboard** URL from your browser. The dashboard page is HTML
-and cannot accept a POST.
+### 3. Connect and start the website
 
-Want to iterate without deploying? `modal serve modal_app.py` gives you a temporary dev URL
-with live reload. It keeps running until you press `Ctrl-C`, so stop it when you are done.
+Open a second terminal, or stop the backend command if it is still running. From the
+project's top-level folder, run:
 
-### 2. Start the frontend
+```powershell
+Set-Location frontend
+Copy-Item .env.example .env.local
+```
 
-```bash
-cd frontend
+Open `frontend/.env.local` in VS Code. Replace the example URL with the `.modal.run` URL
+you copied in Step 2. The line should look like this (use your own URL):
+
+```text
+NEXT_PUBLIC_MODAL_ENDPOINT=https://your-workspace--modal-sentiment-demo-sentimentmodel-predict.modal.run
+```
+
+Save the file, then install the website's packages and start its development server:
+
+```powershell
 npm install
-cp .env.example .env.local     # then paste your Modal URL into .env.local
 npm run dev
 ```
 
-`.env.local` is only read on your machine. Next.js also loads a plain `.env` file, so either
-one works — `.env.local` wins when both exist.
+Keep this terminal open while using the website. Open [http://localhost:3000](http://localhost:3000)
+in your browser, enter a short sentence, and select **Analyze**. The first analysis may
+take longer because Modal needs to start the model.
 
-Open http://localhost:3000, type a sentence (or click one of the example prompts) and press
-**Analyze**.
+### 4. Stop the website when finished
 
-`NEXT_PUBLIC_MODAL_ENDPOINT` is inlined when the dev server starts, so restart `npm run dev`
-after changing it. The dev server is only needed while you are looking at the page — stop it
-with `Ctrl-C` when you are done.
+In the terminal running the website, press **Ctrl+C**. This stops your local development
+server. The deployed backend scales down when idle; to remove the Modal app entirely, run
+this from the `backend` folder:
 
-### 3. Test the endpoint manually
-
-```bash
-export MODAL_ENDPOINT="https://<your-workspace>--modal-sentiment-demo-sentimentmodel-predict.modal.run"
-
-curl -X POST "$MODAL_ENDPOINT" \
-  -H 'Content-Type: application/json' \
-  -d '{"text": "I absolutely love this product!"}'
+```powershell
+python -m modal app stop modal-sentiment-demo
 ```
 
-```json
-{"label": "POSITIVE", "confidence": 0.9998}
-```
+You can deploy it again later by repeating Step 2.
 
-A negative example, then the error cases:
+### Common problems
 
-```bash
-curl -X POST "$MODAL_ENDPOINT" -H 'Content-Type: application/json' \
-  -d '{"text": "This product is terrible."}'
+| What you see | What to check |
+| --- | --- |
+| `python` is not recognized | Install Python and enable **Add Python to PATH**, then open a new terminal. On some Windows installations, `py` works in place of `python`. |
+| `npm` or `node` is not recognized | Install Node.js, then open a new terminal. |
+| `modal` is not recognized | Use the commands above as written: `python -m modal ...`. |
+| The page says `NEXT_PUBLIC_MODAL_ENDPOINT is not set` | Make sure `frontend/.env.local` exists and contains the exact variable name and your URL. Restart `npm run dev` after editing it. |
+| The request cannot reach Modal | Confirm you deployed the backend and used its full `.modal.run` function URL, not the Modal dashboard URL. |
+| The first request is slow | This is normal after the backend has been idle. Modal starts a container and loads the model. |
+| The backend rejects the text | This demo accepts non-empty text up to 500 characters. It only predicts `POSITIVE` or `NEGATIVE`; it has no neutral category. |
 
-# 400 — empty text
-curl -i -X POST "$MODAL_ENDPOINT" -H 'Content-Type: application/json' \
-  -d '{"text": "   "}'
+The endpoint is publicly reachable, so do not send passwords, private, or sensitive text to
+it. Modal usage and pricing can change; check your Modal dashboard for current limits and
+charges.
 
-# 413 — more than 500 characters
-curl -i -X POST "$MODAL_ENDPOINT" -H 'Content-Type: application/json' \
-  -d "{\"text\": \"$(python -c 'print("a" * 501)')\"}"
-```
+## Learn more
 
-More backend detail — logs, container lifecycle, the response contract — is in
-[`backend/README.md`](backend/README.md).
+- [Backend guide](backend/README.md): endpoint behavior, logs, and deployment details.
+- [Frontend guide](frontend/README.md): environment setup and website scripts.
+- `backend/modal_app.py`: the Python function deployed to Modal.
+- `frontend/lib/api.ts`: the browser request sent to that function.
 
 ---
 
